@@ -180,6 +180,11 @@ private class DocGenCurrencyTest {
 
     @IsTest
     static void singleCurrencyOrgSkipsAllCurrencyMachinery() {
+        // AssetOptics: only meaningful in a single-currency org; multi-currency orgs are
+        // covered by the other tests in this class.
+        if (UserInfo.isMultiCurrencyOrganization()) {
+            return;
+        }
         // No rate override: isMultiCurrency() falls through to the real org, which is
         // single-currency under test. Even mixed-looking data must behave as before.
         DocGenCurrency.resetForTest();

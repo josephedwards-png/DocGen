@@ -25,6 +25,11 @@ private class DocGenFontTest {
         Id adminPs = [SELECT Id FROM PermissionSet WHERE Name = 'DocGen_Admin' LIMIT 1].Id;
         insert new PermissionSetAssignment(AssigneeId = admin.Id, PermissionSetId = adminPs);
     }
+    // AssetOptics: queried as the running user, before System.runAs. With User sharing
+    // set to Private, the Standard User font admin cannot see the author.
+    private static User fontAuthor() {
+        return [SELECT Id FROM User WHERE LastName = 'Portwood Font Author QA' LIMIT 1];
+    }
     private static User fontAdmin() {
         return [SELECT Id FROM User WHERE Alias = 'fontad' LIMIT 1];
     }
@@ -372,9 +377,9 @@ private class DocGenFontTest {
     }
     @IsTest
     static void authorCanUseVerifiedFontsWithoutManagementPermission() {
+        User author = fontAuthor();
         System.runAs(fontAdmin()) {
             String key = verified();
-            User author = [SELECT Id FROM User WHERE LastName = 'Portwood Font Author QA' LIMIT 1];
             System.runAs(author) {
                 System.assert(!FeatureManagement.checkPermission('Manage_DocGen_Fonts'));
                 System.assert(!DocGenFontController.getFontFaces().isEmpty());
@@ -414,6 +419,7 @@ private class DocGenFontTest {
     }
     @IsTest
     static void nativeFileUploadAndPrivateJobResult() {
+        User author = fontAuthor();
         System.runAs(fontAdmin()) {
             Blob bytes = DocGenFontTestData.regular();
             String license = 'SIL OFL 1.1 - test fixture';
@@ -441,7 +447,6 @@ private class DocGenFontTest {
                     .startsWith('/sfc/dist/version/download/')
             );
             System.assertEquals(1, [SELECT COUNT() FROM ContentVersion]);
-            User author = [SELECT Id FROM User WHERE LastName = 'Portwood Font Author QA' LIMIT 1];
             System.runAs(author) {
                 try {
                     DocGenFontController.getFontJobStatus(job);
@@ -472,8 +477,8 @@ private class DocGenFontTest {
     }
     @IsTest
     static void rejectAnotherUsersPrivateFont() {
+        User author = fontAuthor();
         System.runAs(fontAdmin()) {
-            User author = [SELECT Id FROM User WHERE LastName = 'Portwood Font Author QA' LIMIT 1];
             Id documentId;
             System.runAs(author) {
                 ContentVersion cv = new ContentVersion(
@@ -580,10 +585,10 @@ private class DocGenFontTest {
     }
     @IsTest
     static void fontTagCatalogAndAuthorAccess() {
+        User author = fontAuthor();
         System.runAs(fontAdmin()) {
             String key = verified();
             String tag = fontTag(key);
-            User author = [SELECT Id FROM User WHERE LastName = 'Portwood Font Author QA' LIMIT 1];
             System.runAs(author) {
                 System.assertEquals(tag, DocGenFontController.getFontFaces()[0].get('mergeTag'));
                 String source = '<p style="' + tag + ';font-size:12pt">Şahin 漢</p>';
